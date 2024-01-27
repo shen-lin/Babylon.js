@@ -308,6 +308,7 @@ export class ShaderProcessor {
     }
 
     private static _ProcessShaderConversion(sourceCode: string, options: ProcessingOptions, engine: ThinEngine): string {
+        console.log("_ProcessShaderConversion", sourceCode, options.processor?.shaderLanguage);
         let preparedSourceCode = this._ProcessPrecision(sourceCode, options);
 
         if (!options.processor) {

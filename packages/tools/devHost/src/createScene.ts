@@ -12,20 +12,19 @@ import {
     StandardMaterial, 
     Color3, 
     SpotLight,
-    ShadowGenerator, 
-    Effect, 
+    ShadowGenerator,
     ShaderMaterial, 
     Texture, 
     ShadowDepthWrapper, 
-    // ShaderLanguage 
+    ShaderLanguage, 
+    ShaderStore
 }  from "@dev/core";
-import {  Scene,  } from "@dev/core";
+import {  Scene } from "@dev/core";
 
 let time = 0;
 
 export const createScene = async function () {
     const scene = new Scene(engine);
-    // scene.createDefaultCameraOrLight(true);
 
     const camera = new ArcRotateCamera("Camera", 0, 0.8, 90, Vector3.Zero(), scene);
 	camera.lowerBetaLimit = 0.1;
@@ -56,50 +55,46 @@ export const createScene = async function () {
     ground.receiveShadows = true;
 
 
-    Effect.ShadersStore["floatingBoxVertexShader"] = `
-    precision highp float;
+    ShaderStore.ShadersStoreWGSL["floatingBoxVertexShader"] = `
+    #include<sceneUboDeclaration>
+    #include<meshUboDeclaration>
+    #include<instancesDeclaration>
 
-    attribute vec3 position;
-    attribute vec3 normal;
-    attribute vec2 uv;
+    attribute position: vec3<f32>;
+    attribute uv: vec2<f32>;
+    attribute normal: vec3<f32>;
+    
+    uniform time: f32;
 
-    #include<__decl__sceneVertex>
-    #include<__decl__meshVertex>
+    varying vUV: vec2<f32>;
 
-    uniform float time;
-
-    varying vec2 vUV;
-
-    void main(void) {
-        vUV = uv;
-
-        vec4 p = vec4(position, 1.0);
-
-        float m = (p.x + p.z + p.y) / 3.;
-
+    @vertex
+    fn main(input: VertexInputs) -> FragmentInputs {
+        #include<instancesVertex>
+        vertexOutputs.vUV = input.uv;
+    
+        var p : vec4<f32> = vec4<f32>(input.position, 1.0);
+    
+        var m : f32 = (p.x + p.z + p.y) / 3.0;
+    
         m = m * p.y;
-
-        p.x = p.x + m * sin(2.0 * time);
-        p.y = p.y + m * sin(-3.0 * time);
-        p.z = p.z + m * cos(5.0 * time);
-
-        p = world * p;
-
-        vec3 normalW = normalize(mat3(world) * normal);
-
-        #define SHADOWDEPTH_NORMALBIAS
-
-        gl_Position = projection * view * p;
+    
+        p.x = p.x + m * sin(2.0 * uniforms.time);
+        p.y = p.y + m * sin(-3.0 * uniforms.time);
+        p.z = p.z + m * cos(5.0 * uniforms.time);
+    
+        p = mesh.world * p;
+    
+        vertexOutputs.position = scene.viewProjection * p;
     }`;
 
-    Effect.ShadersStore["floatingBoxFragmentShader"] = `
-    precision highp float;
-
-    varying vec2 vUV;
-    uniform sampler2D textureSampler;
-
-    void main(void) {
-
+    ShaderStore.ShadersStoreWGSL["floatingBoxFragmentShader"] = `
+    varying vUV: vec2<f32>;
+    var textureSampler: texture_2d<f32>;
+    
+    @fragment
+    fn main(input: FragmentInputs) -> FragmentOutputs {
+        fragmentOutputs.color = vec4(0.5, 0.4, 0.8, 1.0); // = textureSample(textureSampler, input.vUV);
     }`;
 
     const shaderMaterial = new ShaderMaterial("shader", scene, {
@@ -108,13 +103,13 @@ export const createScene = async function () {
     },
     {
         attributes: ["position", "normal", "uv"],
-        uniforms: ["world", "view", "projection", "time"],
+        uniforms: ["world", "view", "projection", "viewProjection", "time"],
         samplers: ["textureSampler"],
         uniformBuffers: ["Mesh", "Scene"],
-        // shaderLanguage: ShaderLanguage.WGSL
+        shaderLanguage: ShaderLanguage.WGSL
     });
 
-    shaderMaterial.setTexture("textureSampler", new Texture("textures/crate.png", scene));
+    shaderMaterial.setTexture("textureSampler", new Texture("https://playground.babylonjs.com/textures/crate.png", scene));
 
     shaderMaterial.shadowDepthWrapper = new ShadowDepthWrapper(shaderMaterial, scene, {
         remappedVariables: ["worldPos", "p", "vNormalW", "normalW", "alpha", "1."],
@@ -126,8 +121,7 @@ export const createScene = async function () {
 
 
     scene.onBeforeRenderObservable.add(() => {
-
-            time += 1 / 60 / 2;
+        time += 1 / 60 / 2;
     });
 
     InjectGUIEditor(GUIEditor);
