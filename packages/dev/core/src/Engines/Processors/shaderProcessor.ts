@@ -37,9 +37,13 @@ export class ShaderProcessor {
     }
 
     public static Process(sourceCode: string, options: ProcessingOptions, callback: (migratedCode: string, codeBeforeMigration: string) => void, engine: ThinEngine) {
+        console.log("Process starting...", sourceCode);
         if (options.processor?.preProcessShaderCode) {
+            console.log("preProcessShaderCode starting...", options.processor.preProcessShaderCode);
             sourceCode = options.processor.preProcessShaderCode(sourceCode, options.isFragment);
+            console.log("preProcessShaderCode completed");
         }
+        console.log("_ProcessIncludes starting...", sourceCode);
         this._ProcessIncludes(sourceCode, options, (codeWithIncludes) => {
             if (options.processCodeAfterIncludes) {
                 codeWithIncludes = options.processCodeAfterIncludes(options.isFragment ? "fragment" : "vertex", codeWithIncludes);
@@ -376,6 +380,8 @@ export class ShaderProcessor {
 
     /** @internal */
     public static _ProcessIncludes(sourceCode: string, options: ProcessingOptions, callback: (data: any) => void): void {
+        console.log("_ProcessIncludes", sourceCode, options);
+
         reusableMatches.length = 0;
         let match: RegExpMatchArray | null;
         // stay back-compat to the old matchAll syntax
@@ -390,7 +396,7 @@ export class ShaderProcessor {
 
         for (const match of reusableMatches) {
             let includeFile = match[1];
-
+            console.log("reusableMatches", reusableMatches);
             // Uniform declaration
             if (includeFile.indexOf("__decl__") !== -1) {
                 includeFile = includeFile.replace(regexShaderDecl, "");
