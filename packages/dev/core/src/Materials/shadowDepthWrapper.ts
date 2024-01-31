@@ -242,7 +242,7 @@ export class ShadowDepthWrapper {
             fragmentCode = origEffect.fragmentSourceCodeBeforeMigration;
 
         if (!this.doNotInjectCode) {
-            const shaderLanguage = (this._baseMaterial as ShaderMaterial).options?.shaderLanguage ?? ShaderLanguage.GLSL;
+            const shaderLanguage = origEffect.shaderLanguage;
             const vertexNormalBiasCode =
                     this._options && this._options.remappedVariables
                         ? `#include<shadowMapVertexNormalBias>(${this._options.remappedVariables.join(",")})`
@@ -300,6 +300,7 @@ export class ShadowDepthWrapper {
 
             uniforms.push("biasAndScaleSM", "depthValuesSM", "lightDataSM", "softTransparentShadowSM");
         }
+
         params.mainDrawWrapper.effect = engine.createEffect(
             {
                 vertexSource: vertexCode,
@@ -314,7 +315,7 @@ export class ShadowDepthWrapper {
                 samplers: origEffect.getSamplers(),
                 defines: join + "\n" + origEffect.defines.replace("#define SHADOWS", "").replace(/#define SHADOW\d/g, ""),
                 indexParameters: origEffect.getIndexParameters(),
-                shaderLanguage: (this._baseMaterial as ShaderMaterial).options?.shaderLanguage ?? ShaderLanguage.GLSL,
+                shaderLanguage: origEffect.shaderLanguage,
             },
             engine
         );

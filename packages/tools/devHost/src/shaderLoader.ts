@@ -1,10 +1,10 @@
 import { Effect, ShaderLanguage, ShaderStore } from "@dev/core";
 
-export function loadShader(shaderLanguage: ShaderLanguage) {
-    if (shaderLanguage === ShaderLanguage.GLSL) {
-        loadGlslShader();
-    } else {
+export function loadShader(shaderLanguage?: ShaderLanguage) {
+    if (shaderLanguage === ShaderLanguage.WGSL) {
         loadWgslShader();
+    } else {
+        loadGlslShader();
     }
 }
 
