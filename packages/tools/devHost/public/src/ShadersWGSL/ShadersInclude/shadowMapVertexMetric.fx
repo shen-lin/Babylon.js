@@ -1,1 +1,0 @@
-const test: f32 = 1.0;

@@ -18,13 +18,21 @@ import {
     Texture, 
     ShadowDepthWrapper,
     ShaderLanguage,
+    ShaderStore,
 }  from "@dev/core";
 import { loadShader } from "./shaderLoader";
 
 let time = 0;
 const shaderLanguage = ShaderLanguage.WGSL;
+const doNotInjectCode = false;
 
 export const createScene = async function () {
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapVertexMetric'] = 'const shadowMapVertexMetric_test: f32 = 1.0;';
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapVertexNormalBias'] = 'const shadowMapVertexNormalBias_test: f32 = 1.0;';
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapFragmentSoftTransparentShadow'] = 'const shadowMapFragmentSoftTransparentShadow_test: f32 = 1.0;';
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapFragment'] = 'const shadowMapFragment_test: f32 = 1.0;';
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapVertexExtraDeclaration'] = 'const shadowMapVertexExtraDeclaration_test: f32 = 1.0;';
+
     const scene = new Scene(engine);
 
     const camera = new ArcRotateCamera("Camera", 0, 0.8, 90, Vector3.Zero(), scene);
@@ -74,7 +82,7 @@ export const createScene = async function () {
 
     shaderMaterial.shadowDepthWrapper = new ShadowDepthWrapper(shaderMaterial, scene, {
         remappedVariables: ["worldPos", "p", "vNormalW", "normalW", "alpha", "1."],
-        doNotInjectCode: true
+        doNotInjectCode,
     });
     shaderMaterial.onBindObservable.add((m) => { 
         shaderMaterial.getEffect().setFloat("time", time);

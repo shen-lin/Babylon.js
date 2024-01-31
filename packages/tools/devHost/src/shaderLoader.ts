@@ -70,7 +70,7 @@ function loadWgslShader() {
       p.z = p.z + m * cos(5.0 * uniforms.time);
   
       p = mesh.world * p;
-  
+      #define SHADOWDEPTH_NORMALBIAS
       vertexOutputs.position = scene.viewProjection * p;
   }`;
 
