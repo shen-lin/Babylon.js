@@ -109,6 +109,7 @@
     "feature": "New Feature"
   },
   "dependencies": {
-    "lerna": "^7.0.2"
+    "lerna": "^7.0.2",
+    "nx": "^15.9.7"
   }
 }

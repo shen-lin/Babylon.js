@@ -1,42 +1,100 @@
 /* eslint-disable-next-line import/no-internal-modules */
-import { canvas, engine } from "./index";
+import { engine, canvas } from "./index";
 import "@dev/loaders";
 import "@tools/node-editor";
 import "@tools/node-geometry-editor";
 import * as GUIEditor from "@tools/gui-editor";
 import { Inspector, InjectGUIEditor } from "@dev/inspector";
-import type { ArcRotateCamera } from "@dev/core";
-import { CubeTexture, Scene, SceneLoader } from "@dev/core";
-import { AdvancedDynamicTexture, Button } from "@dev/gui";
+import { 
+    Scene,
+    ArcRotateCamera, 
+    Vector3, 
+    MeshBuilder, 
+    StandardMaterial, 
+    Color3, 
+    SpotLight,
+    ShadowGenerator,
+    ShaderMaterial, 
+    Texture, 
+    ShadowDepthWrapper,
+    ShaderLanguage,
+    ShaderStore,
+}  from "@dev/core";
+import { loadShader } from "./shaderLoader";
+
+let time = 0;
+const shaderLanguage = ShaderLanguage.WGSL;
+const doNotInjectCode = false;
 
 export const createScene = async function () {
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapVertexMetric'] = 'const shadowMapVertexMetric_test: f32 = 1.0;';
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapVertexNormalBias'] = 'const shadowMapVertexNormalBias_test: f32 = 1.0;';
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapFragmentSoftTransparentShadow'] = 'const shadowMapFragmentSoftTransparentShadow_test: f32 = 1.0;';
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapFragment'] = 'const shadowMapFragment_test: f32 = 1.0;';
+    ShaderStore.IncludesShadersStoreWGSL['shadowMapVertexExtraDeclaration'] = 'const shadowMapVertexExtraDeclaration_test: f32 = 1.0;';
+
     const scene = new Scene(engine);
-    scene.createDefaultCameraOrLight(true);
-    const hdrTexture = new CubeTexture("https://playground.babylonjs.com/textures/SpecularHDR.dds", scene);
-    scene.createDefaultSkybox(hdrTexture, true, 10000);
 
-    // The first parameter can be used to specify which mesh to import. Here we import all meshes
-    SceneLoader.AppendAsync("https://assets.babylonjs.com/meshes/webp/", "webp.gltf", scene, function (_newMeshes) {
-        scene.activeCamera!.attachControl(canvas, false);
-        // scene.activeCamera!.alpha += Math.PI; // camera +180°
-        (scene.activeCamera as ArcRotateCamera).radius = 80;
+    const camera = new ArcRotateCamera("Camera", 0, 0.8, 90, Vector3.Zero(), scene);
+	camera.lowerBetaLimit = 0.1;
+	camera.upperBetaLimit = (Math.PI / 2) * 0.9;
+	camera.lowerRadiusLimit = 1;
+	camera.upperRadiusLimit = 150;
+	camera.attachControl(canvas, true);
+    camera.setPosition(new Vector3(-20, 11, -20));
+
+    const light = new SpotLight("spotLight", new Vector3(-40, 40, -40), new Vector3(1, -1, 1), Math.PI / 5, 30, scene);
+	light.position = new Vector3(-40, 40, -40);
+	const shadowGenerator = new ShadowGenerator(1024, light);
+
+
+    const ground = MeshBuilder.CreateGround("ground", {width: 200, height: 200, subdivisions:100}, scene);
+    const groundMaterial = new StandardMaterial("ground", scene);	
+	groundMaterial.specularColor = new Color3(0, 0, 0);
+	ground.material = groundMaterial;
+
+
+    const sphere = MeshBuilder.CreateSphere("sphere", {diameter: 3}, scene);
+	sphere.position.y = 5;
+	sphere.position.x = -7;
+	sphere.position.z = -1;
+
+    shadowGenerator.addShadowCaster(sphere);
+    sphere.receiveShadows = true;
+    ground.receiveShadows = true;
+
+
+    loadShader(shaderLanguage);
+    
+    const shaderMaterial = new ShaderMaterial("shader", scene, {
+    vertex: "floatingBox",
+    fragment: "floatingBox",
+    },
+    {
+        attributes: ["position", "normal", "uv"],
+        uniforms: ["world", "view", "projection", "viewProjection", "time"],
+        samplers: ["textureSampler"],
+        uniformBuffers: ["Mesh", "Scene"],
+        shaderLanguage
     });
 
-    const advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    shaderMaterial.setTexture("textureSampler", new Texture("https://playground.babylonjs.com/textures/crate.png", scene));
 
-    const button1 = Button.CreateSimpleButton("but1", "Click Me");
-    button1.width = "150px";
-    button1.height = "40px";
-    button1.color = "white";
-    button1.cornerRadius = 20;
-    button1.background = "green";
-    button1.onPointerUpObservable.add(function () {
-        // eslint-disable-next-line no-console
-        console.log("you did it!");
+    shaderMaterial.shadowDepthWrapper = new ShadowDepthWrapper(shaderMaterial, scene, {
+        remappedVariables: ["worldPos", "p", "vNormalW", "normalW", "alpha", "1."],
+        doNotInjectCode,
     });
-    advancedTexture.addControl(button1);
+    shaderMaterial.onBindObservable.add((m) => { 
+        shaderMaterial.getEffect().setFloat("time", time);
+    });
+    sphere.material = shaderMaterial;
+
+
+    scene.onBeforeRenderObservable.add(() => {
+        time += 1 / 60 / 2;
+    });
+
     InjectGUIEditor(GUIEditor);
     Inspector.Show(scene, {});
-
     return scene;
 };

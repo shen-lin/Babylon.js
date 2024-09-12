@@ -66,7 +66,8 @@ export class ShaderProcessor {
         if (!options.processor || !options.processor.finalizeShaders) {
             return { vertexCode, fragmentCode };
         }
-
+        console.log(vertexCode);
+        console.log(fragmentCode);
         return options.processor.finalizeShaders(vertexCode, fragmentCode, options.processingContext);
     }
 
@@ -389,7 +390,6 @@ export class ShaderProcessor {
 
         for (const match of reusableMatches) {
             let includeFile = match[1];
-
             // Uniform declaration
             if (includeFile.indexOf("__decl__") !== -1) {
                 includeFile = includeFile.replace(regexShaderDecl, "");
